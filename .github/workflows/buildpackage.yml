@@ -27,8 +27,7 @@ concurrency:
 
 jobs:
   pack:
-    # Windows: the pinned Nerdbank.GitVersioning needs a native libgit2 that does not load on current
-    # Ubuntu runners, and the .NET Framework targets build here as well.
+    # Windows, like the repository's other workflows (the package also targets .NET Framework).
     runs-on: windows-latest
 
     permissions:
