@@ -96,7 +96,14 @@ jobs:
         shell: pwsh
         run: |
           # GitHub Packages does not accept .snupkg symbol packages, so only the .nupkg is pushed.
-          dotnet nuget push "artifacts/*.nupkg" `
-            --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" `
-            --api-key "${{ secrets.GITHUB_TOKEN }}" `
-            --skip-duplicate
+          # Push each file by full path: dotnet nuget push does not expand "artifacts/*.nupkg" on the runner.
+          $packages = Get-ChildItem artifacts -Filter *.nupkg
+          if (-not $packages) { throw "No .nupkg found in artifacts." }
+          foreach ($pkg in $packages) {
+            Write-Host "Pushing $($pkg.Name)"
+            dotnet nuget push $pkg.FullName `
+              --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" `
+              --api-key "${{ secrets.GITHUB_TOKEN }}" `
+              --skip-duplicate
+            if ($LASTEXITCODE -ne 0) { throw "dotnet nuget push failed for $($pkg.Name)" }
+          }
