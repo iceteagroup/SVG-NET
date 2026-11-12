@@ -1,4 +1,5 @@
-﻿using NUnit.Framework;
+﻿#if !SDM // Metafile and HDC interop are not available in System.Drawing.Managed
+using NUnit.Framework;
 using System;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -55,3 +56,4 @@ namespace Svg.UnitTests
         }
     }
 }
+#endif

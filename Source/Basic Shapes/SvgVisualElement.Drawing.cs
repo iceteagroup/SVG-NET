@@ -285,7 +285,9 @@ namespace Svg
                                             if (length < dashPattern.Length)
                                                 Array.Resize(ref pattern, length);
                                             dashPattern = pattern;
+#if !SDM // System.Drawing.Managed has no Pen.DashCap
                                             pen.DashCap = DashCap.Round;
+#endif
                                         }
                                     }
 
@@ -320,11 +322,15 @@ namespace Svg
                                 switch (StrokeLineCap)
                                 {
                                     case SvgStrokeLineCap.Round:
+#if !SDM // System.Drawing.Managed has only Pen.EndCap
                                         pen.StartCap = LineCap.Round;
+#endif
                                         pen.EndCap = LineCap.Round;
                                         break;
                                     case SvgStrokeLineCap.Square:
+#if !SDM
                                         pen.StartCap = LineCap.Square;
+#endif
                                         pen.EndCap = LineCap.Square;
                                         break;
                                 }

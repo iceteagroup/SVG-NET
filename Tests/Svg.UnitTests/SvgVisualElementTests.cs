@@ -17,7 +17,11 @@ namespace Svg.UnitTests
             var visualElement = visualElementMock.Object;
             visualElement.ShapeRendering = SvgShapeRendering.Auto;
 
+#if SDM // System.Drawing.Managed has no Graphics.FromHwnd
+            var g = Graphics.FromImage(new Bitmap(1, 1));
+#else
             var g = Graphics.FromHwnd(IntPtr.Zero);
+#endif
             var renderer = SvgRenderer.FromGraphics(g);
 
             g.SmoothingMode = SmoothingMode.AntiAlias;

@@ -51,6 +51,20 @@ namespace Svg
                 format.FormatFlags |= StringFormatFlags.MeasureTrailingSpaces;
 
                 var location = new PointF(0f, 0f);
+#if SDM
+                // System.Drawing.Managed has no MeasureCharacterRanges: derive each character's
+                // box from the width of the text preceding it.
+                var height = g.MeasureString(text, _font, location, format).Height;
+                var left = 0f;
+                for (var i = 0; i < text.Length; i++)
+                {
+                    var right = i == text.Length - 1
+                        ? g.MeasureString(text, _font, location, format).Width
+                        : g.MeasureString(text.Substring(0, i + 1), _font, location, format).Width;
+                    regions.Add(new RectangleF(left, 0f, right - left, height));
+                    left = right;
+                }
+#else
                 var size = System.Drawing.Size.Ceiling(g.MeasureString(text, _font, location, format));
                 var layoutRect = new RectangleF(location, new SizeF(size.Width, 1000));
 
@@ -61,6 +75,7 @@ namespace Svg
                         select new CharacterRange(r, 1)).ToArray());
                     regions.AddRange(from r in g.MeasureCharacterRanges(text, _font, layoutRect, format) select r.GetBounds(g));
                 }
+#endif
             }
             return regions;
         }
@@ -70,12 +85,19 @@ namespace Svg
             var g = GetGraphics(renderer);
             using (var format = new StringFormat(StringFormat.GenericTypographic))
             {
+#if SDM
+                format.FormatFlags |= StringFormatFlags.MeasureTrailingSpaces;
+                var width = g.MeasureString(text, _font, new PointF(0f, 0f), format).Width;
+
+                return new SizeF(width, Ascent(renderer));
+#else
                 format.SetMeasurableCharacterRanges(new CharacterRange[] { new CharacterRange(0, text.Length) });
                 format.FormatFlags |= StringFormatFlags.MeasureTrailingSpaces;
                 var r = g.MeasureCharacterRanges(text, _font, new Rectangle(0, 0, 1000, 1000), format);
                 var rect = r[0].GetBounds(g);
 
                 return new SizeF(rect.Width, Ascent(renderer));
+#endif
             }
         }
 

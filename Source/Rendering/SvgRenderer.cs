@@ -84,7 +84,13 @@ namespace Svg
         }
         public Region GetClip()
         {
+#if SDM
+            // System.Drawing.Managed returns the live clip region, which later SetClip(..., Intersect)
+            // calls modify; return a copy so it can be restored afterwards.
+            return _innerGraphics.Clip.Clone();
+#else
             return _innerGraphics.Clip;
+#endif
         }
         public void RotateTransform(float fAngle, MatrixOrder order = MatrixOrder.Append)
         {

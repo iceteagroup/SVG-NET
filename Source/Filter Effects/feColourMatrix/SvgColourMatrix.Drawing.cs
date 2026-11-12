@@ -77,7 +77,9 @@ namespace Svg.FilterEffects
                 {
                     g.DrawImage(inputImage, new Rectangle(0, 0, inputImage.Width, inputImage.Height),
                         0, 0, inputImage.Width, inputImage.Height, GraphicsUnit.Pixel, imageAttrs);
+#if !SDM // not available in System.Drawing.Managed
                     g.Flush();
+#endif
                 }
                 buffer[this.Result] = result;
             }

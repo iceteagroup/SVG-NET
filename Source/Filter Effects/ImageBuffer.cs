@@ -161,7 +161,9 @@ namespace Svg.FilterEffects
             {
                 attributes.SetColorMatrix(matrix);
                 graphics.DrawImage(source, new Rectangle(0, 0, source.Width, source.Height), 0, 0, source.Width, source.Height, GraphicsUnit.Pixel, attributes);
+#if !SDM // not available in System.Drawing.Managed
                 graphics.Save();
+#endif
             }
 
             return sourceAlpha;
