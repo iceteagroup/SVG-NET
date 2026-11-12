@@ -1,0 +1,98 @@
+name: Build Managed.Svg package
+
+# Builds the Managed.Svg NuGet package (SVG.NET on System.Drawing.Managed) from the managed branch.
+# - push / pull_request on managed: build and upload the package as a workflow artifact.
+# - workflow_dispatch (Actions > Build Managed.Svg package > Run workflow): also push it to
+#   the GitHub Packages feed of the repository owner, unless "publish" is unchecked.
+#
+# Versions come from Nerdbank.GitVersioning (Source/version.json): builds of the managed branch
+# are 3.4.8.<git height>, builds of other refs get a -g<commit> prerelease suffix.
+
+on:
+  push:
+    branches: [ "managed" ]
+  pull_request:
+    branches: [ "managed" ]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Push the package to GitHub Packages"
+        type: boolean
+        required: false
+        default: true
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pack:
+    # Windows: the pinned Nerdbank.GitVersioning needs a native libgit2 that does not load on current
+    # Ubuntu runners, and the .NET Framework targets build here as well.
+    runs-on: windows-latest
+
+    permissions:
+      contents: read
+      packages: write   # needed to push to GitHub Packages
+
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0  # full history: Nerdbank.GitVersioning computes the version from the git height
+
+      - name: Setup .NET 8.0/9.0 SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+
+      - name: Restore
+        run: dotnet restore Source/Svg.csproj
+
+      - name: Pack
+        run: dotnet pack Source/Svg.csproj -c Release --no-restore -o artifacts -p:ContinuousIntegrationBuild=true
+
+      - name: Show package
+        shell: pwsh
+        run: |
+          $pkg = Get-ChildItem artifacts -Filter *.nupkg | Select-Object -First 1
+          if (-not $pkg) { throw "No .nupkg was produced." }
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $zip = [System.IO.Compression.ZipFile]::OpenRead($pkg.FullName)
+          try {
+            $entry = $zip.Entries | Where-Object { $_.FullName -like '*.nuspec' } | Select-Object -First 1
+            $reader = New-Object System.IO.StreamReader($entry.Open())
+            [xml]$nuspec = $reader.ReadToEnd()
+            $reader.Dispose()
+          } finally { $zip.Dispose() }
+          $meta = $nuspec.package.metadata
+          Write-Host "Package: $($meta.id) $($meta.version)"
+          $meta.dependencies.group | ForEach-Object {
+            Write-Host "  $($_.targetFramework): $(($_.dependency | ForEach-Object { "$($_.id) $($_.version)" }) -join ', ')"
+          }
+          "### $($meta.id) $($meta.version)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Managed.Svg-packages
+          path: |
+            artifacts/*.nupkg
+            artifacts/*.snupkg
+          if-no-files-found: error
+
+      - name: Publish to GitHub Packages
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish && github.ref == 'refs/heads/managed' }}
+        shell: pwsh
+        run: |
+          # GitHub Packages does not accept .snupkg symbol packages, so only the .nupkg is pushed.
+          dotnet nuget push "artifacts/*.nupkg" `
+            --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" `
+            --api-key "${{ secrets.GITHUB_TOKEN }}" `
+            --skip-duplicate

@@ -1,8 +1,12 @@
 {
   "$schema": "https://raw.githubusercontent.com/AArnott/Nerdbank.GitVersioning/master/src/NerdBank.GitVersioning/version.schema.json",
   "version": "3.4.8",
+  "nugetPackageVersion": {
+    "precision": "revision" // keep the git height so every managed build gets a unique package version
+  },
   "publicReleaseRefSpec": [
-    "^refs/heads/master" // we release from master branch
+    "^refs/heads/master", // we release from master branch
+    "^refs/heads/managed" // Managed.Svg (System.Drawing.Managed build) is released from the managed branch
   ],
   "cloudBuild": {
     "buildNumber": {
