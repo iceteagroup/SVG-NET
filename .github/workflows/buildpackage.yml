@@ -55,8 +55,13 @@ jobs:
       - name: Restore
         run: dotnet restore Source/Svg.csproj
 
+      # Build and pack separately: Svg.csproj sets GeneratePackageOnBuild, and with the .NET 10 SDK a plain
+      # "dotnet pack" then packs before every target framework is built (NU5026: net462/Svg.dll not found).
+      - name: Build
+        run: dotnet build Source/Svg.csproj -c Release --no-restore -p:GeneratePackageOnBuild=false -p:ContinuousIntegrationBuild=true
+
       - name: Pack
-        run: dotnet pack Source/Svg.csproj -c Release --no-restore -o artifacts -p:ContinuousIntegrationBuild=true
+        run: dotnet pack Source/Svg.csproj -c Release --no-build -o artifacts -p:ContinuousIntegrationBuild=true
 
       - name: Show package
         shell: pwsh
